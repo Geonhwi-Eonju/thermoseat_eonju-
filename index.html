@@ -1,412 +1,1094 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>중력 & 행성 운동 시뮬레이터</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { overflow: hidden; background-color: #05050a; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #fff; }
-        canvas { display: block; width: 100vw; height: 100vh; }
-        
-        /* UI 컨트롤 패널 */
-        #ui {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            background: rgba(18, 18, 30, 0.85);
-            backdrop-filter: blur(10px);
-            padding: 20px;
-            border-radius: 14px;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            width: 310px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-            user-select: none;
-        }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ThermoSeat · 써모시트</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<style>
+  :root{
+    --bg: #F2F6FB;
+    --surface: #FFFFFF;
+    --surface-2: #EAF1FA;
+    --border: #D9E4F1;
+    --ink: #1F2A3C;
+    --ink-muted: #64748B;
+    --primary: #3E6FE0;
+    --primary-dark: #2A54B8;
+    --primary-light: #DCE8FF;
+    --lvl5: #1E3A8A;
+    --lvl4: #3E7BD8;
+    --lvl3: #AAB6C6;
+    --lvl2: #F5B15F;
+    --lvl1: #A9E0B4;
+    --danger: #E0653E;
+    --radius-lg: 22px;
+    --radius-md: 14px;
+    --radius-sm: 9px;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    color: var(--ink);
+    background-color: var(--bg);
+    background-image: radial-gradient(circle, #C9D9EE 1.4px, transparent 1.4px);
+    background-size: 26px 26px;
+    min-height:100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  #app{ min-height:100vh; display:flex; flex-direction:column; }
+  ::selection{ background: var(--primary-light); }
 
-        h2 { font-size: 1.05rem; margin-bottom: 12px; color: #4facfe; text-transform: uppercase; letter-spacing: 1px; }
-        .control-group { margin-bottom: 14px; }
-        label { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; color: #ddd; }
-        input[type="range"] { width: 100%; accent-color: #4facfe; cursor: pointer; }
-        input[type="color"] { width: 100%; height: 32px; border: none; border-radius: 6px; cursor: pointer; background: transparent; }
-        
-        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
-        button {
-            background: #2a2a40;
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            transition: all 0.2s ease;
-        }
-        button:hover { background: #3a3a58; border-color: #4facfe; }
-        button.active { background: #4facfe; color: #000; font-weight: bold; }
-        
-        .instructions {
-            margin-top: 15px;
-            font-size: 0.75rem;
-            color: #aaaabb;
-            line-height: 1.5;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            padding-top: 12px;
-        }
-    </style>
+  .brand-mark{
+    font-weight:800; letter-spacing:-0.02em;
+  }
+  .card{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 1px 2px rgba(31,42,60,0.04);
+  }
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    padding: 12px 20px; border-radius: 999px; font-weight:600; font-size:15px;
+    transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease, opacity .15s ease;
+    cursor:pointer; border:none; white-space:nowrap;
+  }
+  .btn:active{ transform: scale(0.97); }
+  .btn-primary{ background: var(--primary); color:#fff; box-shadow: 0 6px 16px rgba(62,111,224,0.28); }
+  .btn-primary:hover{ background: var(--primary-dark); }
+  .btn-primary:disabled{ opacity:.4; box-shadow:none; cursor:not-allowed; }
+  .btn-ghost{ background: transparent; color: var(--ink-muted); }
+  .btn-ghost:hover{ color: var(--ink); background: var(--surface-2); }
+  .btn-soft{ background: var(--surface-2); color: var(--primary-dark); }
+  .btn-soft:hover{ background: var(--primary-light); }
+
+  .fade-in{ animation: fadeIn .38s ease both; }
+  @keyframes fadeIn{ from{ opacity:0; transform: translateY(6px);} to{opacity:1; transform:none;} }
+  .pop{ animation: pop .28s cubic-bezier(.34,1.56,.64,1) both; }
+  @keyframes pop{ from{ opacity:0; transform: scale(.9);} to{opacity:1; transform:scale(1);} }
+  @media (prefers-reduced-motion: reduce){
+    .fade-in, .pop, .seat, .btn { animation:none !important; transition:none !important; }
+  }
+
+  .stepper-dot{ width:8px; height:8px; border-radius:999px; background: var(--border); transition: all .2s ease; }
+  .stepper-dot.active{ width:22px; background: var(--primary); }
+  .stepper-dot.done{ background: var(--primary-light); }
+
+  input[type=range]{
+    -webkit-appearance:none; appearance:none; width:100%; height:6px; border-radius:999px;
+    background: linear-gradient(90deg, var(--lvl5), var(--lvl3) 50%, var(--lvl1));
+    outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none; width:26px; height:26px; border-radius:50%;
+    background:#fff; border:4px solid var(--primary); box-shadow: 0 2px 8px rgba(31,42,60,.25); cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:22px; height:22px; border-radius:50%; background:#fff; border:4px solid var(--primary); cursor:pointer;
+  }
+
+  .chip{
+    display:flex; align-items:center; gap:10px; padding:14px 16px; border-radius: var(--radius-md);
+    border:1.5px solid var(--border); background:#fff; cursor:pointer; transition: all .15s ease; text-align:left;
+  }
+  .chip:hover{ border-color: var(--primary); }
+  .chip.selected{ border-color: var(--primary); background: var(--primary-light); }
+  .chip .box{ width:18px; height:18px; border-radius:6px; border:1.5px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; background:#fff; }
+  .chip.selected .box{ background: var(--primary); border-color: var(--primary); }
+  .chip.radio-style .box{ border-radius:999px; }
+
+  /* 외투 개수 조절 버튼 */
+  .counter-btn{
+    width:30px; height:30px; border-radius:999px; border:1.5px solid var(--border);
+    background:#fff; color:var(--primary-dark); font-size:18px; font-weight:700; line-height:1;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    transition: all .15s ease;
+  }
+  .counter-btn:hover:not(:disabled){ border-color:var(--primary); background:var(--primary-light); }
+  .counter-btn:disabled{ opacity:.35; cursor:not-allowed; }
+
+  .classroom-stage{
+    position:relative; width:100%; aspect-ratio: 4/3; border-radius: var(--radius-lg);
+    background: var(--surface-2) center/cover no-repeat;
+    border: 1.5px dashed var(--border); overflow:hidden; user-select:none;
+  }
+  .desk{
+    position:absolute; width:9%; aspect-ratio: 1/1; border-radius: 7px;
+    transform: translate(-50%,-50%);
+    display:flex; align-items:center; justify-content:center;
+    font-size: 11px; font-weight:700; color: rgba(0,0,0,.55);
+    border:2px solid rgba(255,255,255,.7);
+    cursor:pointer; transition: transform .12s ease, filter .12s ease;
+    box-shadow: 0 2px 6px rgba(31,42,60,.12);
+  }
+  .desk:hover{ transform: translate(-50%,-50%) scale(1.08); filter:brightness(1.03); }
+  .desk.best{ outline: 3px solid var(--primary-dark); outline-offset:2px; }
+  .desk .name{ font-size:9.5px; line-height:1.1; text-align:center; padding:2px; }
+  .ac-marker{
+    position:absolute; transform: translate(-50%,-50%); width:10%; aspect-ratio:1/1; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #BFE0FF, #6FA9F2 70%); opacity:.55;
+    display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#1D3E77;
+    pointer-events:none;
+  }
+  .teacher-desk{
+    position:absolute; top:4%; left:50%; transform:translateX(-50%); width:16%; height:11%;
+    background:#E4E9F0; border:2px solid #C4CFDD; border-radius:8px;
+    display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#5B6B82;
+  }
+  .legend-dot{ width:14px; height:14px; border-radius:5px; display:inline-block; }
+
+  .kbd-hint{ font-size:12px; color:var(--ink-muted); }
+  .scrollbar-thin::-webkit-scrollbar{ height:6px; width:6px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb{ background: var(--border); border-radius:99px; }
+
+  .progress-track{ height:8px; border-radius:99px; background: var(--surface-2); overflow:hidden; }
+  .progress-fill{ height:100%; background: var(--primary); transition: width .4s ease; }
+
+  .code-display{ letter-spacing: .35em; font-variant-numeric: tabular-nums; }
+</style>
 </head>
 <body>
-    <canvas id="canvas"></canvas>
+<div id="app"></div>
 
-    <div id="ui">
-        <h2>🪐 행성 설정</h2>
-        
-        <div class="control-group">
-            <label>질량 (Mass): <span id="massVal">1000</span></label>
-            <input type="range" id="mass" min="1" max="20000" value="1000">
-        </div>
+<script>
+/* =========================================================================
+   ThermoSeat (써모시트)
+   - 순수 Vanilla JS SPA (React/Framer Motion 없이 CSS 트랜지션으로 동일한 부드러운
+     인터랙션을 구현했습니다 — 별도 빌드 과정 없이 파일 하나로 바로 실행되도록 하기
+     위한 선택입니다.)
+   - "DB 없음" 요구사항에 맞춰 방(Room) 데이터는 브라우저 localStorage에 저장됩니다.
+     같은 브라우저에서 여러 탭(선생님 탭 + 학생 탭들)을 열어 테스트할 수 있습니다.
+     실제 서비스로 여러 '기기'에서 동시 접속하려면 별도의 백엔드(서버) 동기화가
+     필요합니다 — 이는 정적 파일 한 장으로는 물리적으로 불가능한 부분이라
+     이 데모에서는 localStorage로 시뮬레이션합니다.
+   ========================================================================= */
 
-        <div class="control-group">
-            <label>행성 색상</label>
-            <input type="color" id="color" value="#00d2ff">
-        </div>
+  /* ------------------------------ 상수/유틸 ------------------------------ */
+  const LEVEL_COLORS = {5:'#1E3A8A', 4:'#3E7BD8', 3:'#AAB6C6', 2:'#F5B15F', 1:'#A9E0B4'};
+  const LEVEL_LABELS = {5:'매우 강한 냉기', 4:'강한 냉기', 3:'보통 기류', 2:'약한 냉기', 1:'냉기 거의 없음'};
+  const ROOM_PREFIX = 'thermoseat_room_';
 
-        <div class="control-group">
-            <label>시뮬레이션 속도: <span id="speedVal">1x</span></label>
-            <input type="range" id="speed" min="0" max="3" step="0.1" value="1">
-        </div>
+  const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
+  const uid = ()=> Math.random().toString(36).slice(2,10);
+  const genRoomCode = ()=> String(Math.floor(100000 + Math.random()*900000));
 
-        <div class="btn-grid">
-            <button id="toggleBtn">일시정지</button>
-            <button id="clearBtn">모두 삭제</button>
-        </div>
+  // 점수가 낮을수록 더위를 타서 강한 냉기(Lv.5)를 원하고, 높을수록 추위를 타서 약한 냉기(Lv.1)를 원해요.
+  // 옷은 껴입을수록 추위에 강해지므로 점수에서 빼줍니다.
+  function calcRawScore(d){
+    const extra = d.extraOutfits.reduce((a,b)=>a+b,0);
+    return d.prefTemp - d.baseOutfit - extra + d.activity;
+  }
+  function rawToLevel(raw){
+    if(raw <= -3) return 5;
+    if(raw <= -1) return 4;
+    if(raw <= 1) return 3;
+    if(raw <= 3) return 2;
+    return 1;
+  }
+  function tipForDiff(diff){
+    if(diff >= 2) return {icon:'🧥', title:'생각보다 추운 자리예요', text:'외투나 무릎담요를 챙기세요.'};
+    if(diff <= -2) return {icon:'🧊', title:'생각보다 더운 자리예요', text:'얇은 옷을 입고 시원한 물을 준비하세요.'};
+    return {icon:'🎯', title:'딱 맞는 쾌적한 자리예요', text:'쾌적하게 수업을 들으세요.'};
+  }
 
-        <h2 style="margin-top: 18px;">✨ 프리셋 로드</h2>
-        <div class="btn-grid">
-            <button onclick="loadPreset('solar')">태양계</button>
-            <button onclick="loadPreset('binary')">쌍성계</button>
-            <button onclick="loadPreset('threebody')">삼체 문제</button>
-            <button onclick="loadPreset('chaos')">혼돈 (클러스터)</button>
-        </div>
-
-        <div class="instructions">
-            🎮 <b>조작 방법:</b><br>
-            • <b>클릭 후 드래그:</b> 새 행성 생성 (새총 방식)<br>
-            • 반대 방향으로 멀리 당길수록 발사 속도가 빨라집니다.<br>
-            • 두 행성이 충돌하면 질량과 운동량이 합쳐집니다!
-        </div>
-    </div>
-
-    <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-
-        let width = canvas.width = window.innerWidth;
-        let height = canvas.height = window.innerHeight;
-
-        window.addEventListener('resize', () => {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-        });
-
-        // UI 요소
-        const massInput = document.getElementById('mass');
-        const massVal = document.getElementById('massVal');
-        const colorInput = document.getElementById('color');
-        const speedInput = document.getElementById('speed');
-        const speedVal = document.getElementById('speedVal');
-        const toggleBtn = document.getElementById('toggleBtn');
-        const clearBtn = document.getElementById('clearBtn');
-
-        massInput.addEventListener('input', (e) => massVal.textContent = e.target.value);
-        speedInput.addEventListener('input', (e) => {
-            simSpeed = parseFloat(e.target.value);
-            speedVal.textContent = simSpeed + 'x';
-        });
-
-        let isPaused = false;
-        let simSpeed = 1;
-
-        toggleBtn.addEventListener('click', () => {
-            isPaused = !isPaused;
-            toggleBtn.textContent = isPaused ? '재생' : '일시정지';
-            toggleBtn.classList.toggle('active', isPaused);
-        });
-
-        clearBtn.addEventListener('click', () => { bodies = []; });
-
-        // 물리 상수 설정
-        const G = 1; // 만유인력 상수 (시뮬레이션 스케일용)
-        const SOFTENING = 25; // 근접 시 무한대 힘 발생 방지
-        let bodies = [];
-
-        class Body {
-            constructor(x, y, vx, vy, mass, color) {
-                this.x = x;
-                this.y = y;
-                this.vx = vx;
-                this.vy = vy;
-                this.mass = mass;
-                this.color = color;
-                this.radius = Math.max(2.5, Math.pow(mass, 1/3) * 1.5); // 질량에 비례한 반지름
-                this.trail = [];
-                this.maxTrail = 120;
-            }
-
-            updatePosition(dt) {
-                this.x += this.vx * dt;
-                this.y += this.vy * dt;
-
-                // 궤적 생성
-                this.trail.push({ x: this.x, y: this.y });
-                if (this.trail.length > this.maxTrail) {
-                    this.trail.shift();
-                }
-            }
-
-            draw() {
-                // 궤적 그리기
-                if (this.trail.length > 1) {
-                    ctx.beginPath();
-                    ctx.moveTo(this.trail[0].x, this.trail[0].y);
-                    for (let i = 1; i < this.trail.length; i++) {
-                        ctx.lineTo(this.trail[i].x, this.trail[i].y);
-                    }
-                    ctx.strokeStyle = this.color + '44';
-                    ctx.lineWidth = Math.min(this.radius * 0.4, 2);
-                    ctx.stroke();
-                }
-
-                // 천체 그리기
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = this.color;
-                ctx.shadowBlur = this.radius * 2;
-                ctx.shadowColor = this.color;
-                ctx.fill();
-                ctx.shadowBlur = 0; // 초기화
-            }
+  function buildSeats(rows, groups){
+    const seats = [];
+    for(let r=0;r<rows;r++){
+      for(let g=0; g<groups; g++){
+        for(let s=0;s<2;s++){
+          const col = g*2+s;
+          seats.push({ id:`${r}-${col}`, row:r, col, level:3 });
         }
+      }
+    }
+    return seats;
+  }
+  function defaultGrid(){
+    const rows=5, groups=3;
+    const grid = { rows, groups, acRow:1.4, acCol: (groups)-0.5, seats: buildSeats(rows,groups), image:null, configured:false };
+    autoAssignLevels(grid);
+    return grid;
+  }
+  function autoAssignLevels(grid){
+    const maxCol = grid.groups*2-1;
+    grid.seats.forEach(seat=>{
+      const dRow = (seat.row - grid.acRow) * 1.3;
+      const dCol = (seat.col - grid.acCol) * 1.0;
+      const dist = Math.sqrt(dRow*dRow + dCol*dCol);
+      const isCorner = (seat.row===0 || seat.row===grid.rows-1) && (seat.col===0 || seat.col===maxCol);
+      const isEdge = (seat.row===0 || seat.row===grid.rows-1 || seat.col===0 || seat.col===maxCol);
+      let level;
+      // 기류 반경 (좁게 조정): 값을 키우면 분포가 넓어지고, 줄이면 좁아져요.
+      const R_NEAR = 0.8;   // 에어컨 바로 아래 (약한 냉기, Lv.2)
+      const R_STRONG = 1.8; // 강한 냉기 반경 (Lv.5)
+      const R_EDGE = 2.8;   // 벽쪽 좌석의 Lv.4 반경
+      if(dist <= R_NEAR) level = 2;
+      else if(isCorner) level = 1;
+      else if(dist <= R_STRONG) level = 5;
+      else if(isEdge) level = dist <= R_EDGE ? 4 : 3;
+      else level = 3;
+      seat.level = level;
+    });
+  }
+  function seatCenterPct(grid, seat){
+    const maxCol = grid.groups*2-1;
+    const xPad = 9, yPad = 14;
+    const groupGapExtra = 3.2;
+    const x = xPad + (seat.col + Math.floor(seat.col/2)*0.0 ) * ((100-2*xPad)/(maxCol+1));
+    // add extra aisle gap between groups
+    const groupIndex = Math.floor(seat.col/2);
+    const xAdj = x + groupIndex*groupGapExtra;
+    const y = yPad + seat.row * ((100-2*yPad)/(grid.rows));
+    return { x: xAdj, y };
+  }
+  function acCenterPct(grid){
+    const maxCol = grid.groups*2-1;
+    const xPad = 9, yPad = 14;
+    const groupGapExtra = 3.2;
+    const x = xPad + grid.acCol * ((100-2*xPad)/(maxCol+1));
+    const groupIndex = Math.floor(grid.acCol/2);
+    const xAdj = x + groupIndex*groupGapExtra;
+    const y = yPad + grid.acRow * ((100-2*yPad)/(grid.rows));
+    return { x: xAdj, y };
+  }
 
-        // 마우스 상호작용
-        let isDragging = false;
-        let startX = 0, startY = 0;
-        let currentX = 0, currentY = 0;
-
-        canvas.addEventListener('mousedown', (e) => {
-            if (e.button !== 0) return;
-            isDragging = true;
-            startX = e.clientX;
-            startY = e.clientY;
-            currentX = e.clientX;
-            currentY = e.clientY;
-        });
-
-        canvas.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                currentX = e.clientX;
-                currentY = e.clientY;
-            }
-        });
-
-        canvas.addEventListener('mouseup', (e) => {
-            if (isDragging && e.button === 0) {
-                isDragging = false;
-                const mass = parseFloat(massInput.value);
-                const color = colorInput.value;
-                
-                // 마우스 드래그 반대 방향으로 속도 지정 (새총 효과)
-                const vx = (startX - currentX) * 0.04;
-                const vy = (startY - currentY) * 0.04;
-
-                bodies.push(new Body(startX, startY, vx, vy, mass, color));
-            }
-        });
-
-        // 물리 연산 루프
-        function step(dt) {
-            if (dt === 0) return;
-
-            // 1. 만유인력 계산 (N-Body Physics)
-            for (let i = 0; i < bodies.length; i++) {
-                let fx = 0;
-                let fy = 0;
-
-                for (let j = 0; j < bodies.length; j++) {
-                    if (i === j) continue;
-
-                    const dx = bodies[j].x - bodies[i].x;
-                    const dy = bodies[j].y - bodies[i].y;
-                    const distSq = dx * dx + dy * dy + SOFTENING;
-                    const dist = Math.sqrt(distSq);
-
-                    // F = G * m1 * m2 / r^2
-                    const force = (G * bodies[i].mass * bodies[j].mass) / distSq;
-
-                    fx += force * (dx / dist);
-                    fy += force * (dy / dist);
-                }
-
-                bodies[i].vx += (fx / bodies[i].mass) * dt;
-                bodies[i].vy += (fy / bodies[i].mass) * dt;
-            }
-
-            // 2. 충돌 처리 (비탄성 충돌: 완전 합체 및 운동량 보존)
-            for (let i = 0; i < bodies.length; i++) {
-                for (let j = i + 1; j < bodies.length; j++) {
-                    const b1 = bodies[i];
-                    const b2 = bodies[j];
-
-                    const dx = b2.x - b1.x;
-                    const dy = b2.y - b1.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-
-                    // 두 행성이 접촉했을 때
-                    if (dist < b1.radius + b2.radius) {
-                        const totalMass = b1.mass + b2.mass;
-                        // 완전 비탄성 충돌 공식: v' = (m1*v1 + m2*v2) / (m1 + m2)
-                        const newVx = (b1.vx * b1.mass + b2.vx * b2.mass) / totalMass;
-                        const newVy = (b1.vy * b1.mass + b2.vy * b2.mass) / totalMass;
-
-                        if (b1.mass >= b2.mass) {
-                            b1.mass = totalMass;
-                            b1.vx = newVx;
-                            b1.vy = newVy;
-                            b1.radius = Math.max(2.5, Math.pow(totalMass, 1/3) * 1.5);
-                            bodies.splice(j, 1);
-                            j--;
-                        } else {
-                            b2.mass = totalMass;
-                            b2.vx = newVx;
-                            b2.vy = newVy;
-                            b2.radius = Math.max(2.5, Math.pow(totalMass, 1/3) * 1.5);
-                            bodies.splice(i, 1);
-                            i--;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // 3. 위치 업데이트
-            for (let body of bodies) {
-                body.updatePosition(dt);
-            }
+  /* --------------------------- Hungarian Algorithm ---------------------------
+     최소비용 이분매칭 (n <= m 가정, cost[i][j] = |target_i - seatLevel_j|)
+     classic O(n^3) Kuhn-Munkres (potentials) 구현체. 1-indexed 내부 처리.
+  --------------------------------------------------------------------------- */
+  function hungarian(cost){
+    const n = cost.length;            // students
+    const m = cost[0].length;         // seats, m >= n
+    const INF = Infinity;
+    const u = new Array(n+1).fill(0);
+    const v = new Array(m+1).fill(0);
+    const p = new Array(m+1).fill(0); // p[j] = row matched to col j
+    const way = new Array(m+1).fill(0);
+    for(let i=1;i<=n;i++){
+      p[0] = i;
+      let j0 = 0;
+      const minv = new Array(m+1).fill(INF);
+      const used = new Array(m+1).fill(false);
+      do{
+        used[j0] = true;
+        const i0 = p[j0];
+        let delta = INF, j1 = -1;
+        for(let j=1;j<=m;j++){
+          if(!used[j]){
+            const cur = cost[i0-1][j-1] - u[i0] - v[j];
+            if(cur < minv[j]){ minv[j] = cur; way[j] = j0; }
+            if(minv[j] < delta){ delta = minv[j]; j1 = j; }
+          }
         }
-
-        // 프리셋 로더
-        function loadPreset(type) {
-            bodies = [];
-            const cx = width / 2;
-            const cy = height / 2;
-
-            if (type === 'solar') {
-                // 항성 (태양)
-                bodies.push(new Body(cx, cy, 0, 0, 15000, '#ffcc00'));
-
-                // 행성들 (원운동 속도 공식: v = sqrt(G * M / r))
-                const orbits = [
-                    { r: 120, m: 10, color: '#ff5555' },
-                    { r: 200, m: 25, color: '#55ff55' },
-                    { r: 300, m: 50, color: '#00d2ff' },
-                    { r: 430, m: 100, color: '#ffaa00' }
-                ];
-
-                orbits.forEach(p => {
-                    const v = Math.sqrt((G * 15000) / p.r);
-                    bodies.push(new Body(cx, cy - p.r, v, 0, p.m, p.color));
-                });
-
-                // 3번째 행성의 위성 (달)
-                const earth = bodies[3];
-                const moonR = 28;
-                const moonV = Math.sqrt((G * earth.mass) / moonR);
-                bodies.push(new Body(earth.x, earth.y - moonR, earth.vx + moonV, earth.vy, 1, '#ffffff'));
-
-            } else if (type === 'binary') {
-                const dist = 140;
-                const m = 6000;
-                const v = Math.sqrt((G * m) / (2 * dist));
-
-                bodies.push(new Body(cx - dist, cy, 0, v, m, '#ff3366'));
-                bodies.push(new Body(cx + dist, cy, 0, -v, m, '#33ccff'));
-
-                // 주변 소행성 지대
-                for (let i = 0; i < 25; i++) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const r = 300 + Math.random() * 120;
-                    const x = cx + Math.cos(angle) * r;
-                    const y = cy + Math.sin(angle) * r;
-                    const orbitalV = Math.sqrt((G * m * 2) / r);
-                    bodies.push(new Body(x, y, -Math.sin(angle) * orbitalV, Math.cos(angle) * orbitalV, 4, '#aaaaaa'));
-                }
-
-            } else if (type === 'threebody') {
-                const m = 4000;
-                const dist = 160;
-                const h = dist * Math.sqrt(3) / 2;
-
-                bodies.push(new Body(cx, cy - (2/3)*h, 1.4, 0, m, '#ff0055'));
-                bodies.push(new Body(cx - dist/2, cy + (1/3)*h, -0.7, 1.2, m, '#00ffaa'));
-                bodies.push(new Body(cx + dist/2, cy + (1/3)*h, -0.7, -1.2, m, '#00aaff'));
-
-            } else if (type === 'chaos') {
-                for (let i = 0; i < 90; i++) {
-                    const x = cx + (Math.random() - 0.5) * 600;
-                    const y = cy + (Math.random() - 0.5) * 600;
-                    const vx = (Math.random() - 0.5) * 2;
-                    const vy = (Math.random() - 0.5) * 2;
-                    const mass = Math.random() * 60 + 10;
-                    const colors = ['#ff4b5c', '#43d8c9', '#95389e', '#f8dc81', '#ffffff'];
-                    bodies.push(new Body(x, y, vx, vy, mass, colors[i % colors.length]));
-                }
-            }
+        for(let j=0;j<=m;j++){
+          if(used[j]){ u[p[j]] += delta; v[j] -= delta; }
+          else{ minv[j] -= delta; }
         }
+        j0 = j1;
+      }while(p[j0] !== 0);
+      do{
+        const j1 = way[j0];
+        p[j0] = p[j1];
+        j0 = j1;
+      }while(j0 !== 0);
+    }
+    const assignment = new Array(n).fill(-1);
+    for(let j=1;j<=m;j++){ if(p[j] > 0) assignment[p[j]-1] = j-1; }
+    return assignment;
+  }
 
-        // 기본 상태: 태양계 로드
-        loadPreset('solar');
+  function runAssignment(room){
+    const studentIds = Object.keys(room.students).filter(id => room.students[id].submitted);
+    const seats = room.grid.seats;
+    let n = studentIds.length;
+    const m = seats.length;
+    let overflow = [];
+    if(n > m){
+      overflow = studentIds.slice(m);
+      studentIds.length = m;
+      n = m;
+    }
+    const cost = studentIds.map(id => seats.map(seat => Math.abs(room.students[id].targetLevel - seat.level)));
+    const assign = n>0 ? hungarian(cost) : [];
+    seats.forEach(s => { s.occupantId = null; });
+    studentIds.forEach((id, i) => {
+      const seatIdx = assign[i];
+      const seat = seats[seatIdx];
+      room.students[id].assignedSeatId = seat ? seat.id : null;
+      if(seat) seat.occupantId = id;
+    });
+    overflow.forEach(id => { room.students[id].assignedSeatId = null; });
+    room.status = 'done';
+  }
 
-        // 메인 애니메이션 루프
-        function animate() {
-            // 잔상 효과를 위한 반투명 덮어쓰기
-            ctx.fillStyle = 'rgba(5, 5, 10, 0.25)';
-            ctx.fillRect(0, 0, width, height);
+  /* ------------------------------ Storage ------------------------------ */
+  function saveRoom(room){ room.updatedAt = Date.now(); localStorage.setItem(ROOM_PREFIX+room.code, JSON.stringify(room)); }
+  function loadRoom(code){ const raw = localStorage.getItem(ROOM_PREFIX+code); return raw ? JSON.parse(raw) : null; }
 
-            if (!isPaused) {
-                // 서브스텝 연산으로 오차 및 터짐 방지
-                const subSteps = 4;
-                const dt = (0.2 * simSpeed) / subSteps;
-                for (let i = 0; i < subSteps; i++) {
-                    step(dt);
-                }
-            }
+  /* ------------------------------ App State ------------------------------ */
+  function freshDraft(){ return { name:'', prefTemp:0, baseOutfit:0, extraOutfits:[], activity:0 }; }
 
-            // 행성 그리기
-            for (let body of bodies) {
-                body.draw();
-            }
+  const S = {
+    screen: 'landing',
+    step: 1,
+    personal: { draft: freshDraft(), targetLevel:null, grid: defaultGrid() },
+    room: null,        // 현재 열람중인 room object (teacher/student 공용, 캐시)
+    roomCode: '',
+    studentId: null,
+    studentDraft: freshDraft(),
+    joinError: '',
+    createCount: 24,
+    toast: null,
+  };
 
-            // 마우스 드래그 가이드라인 (새총 궤적)
-            if (isDragging) {
-                ctx.beginPath();
-                ctx.moveTo(startX, startY);
-                ctx.lineTo(currentX, currentY);
-                ctx.strokeStyle = '#rgba(255, 255, 255, 0.7)';
-                ctx.lineWidth = 2;
-                ctx.setLineDash([6, 6]);
-                ctx.stroke();
-                ctx.setLineDash([]);
-
-                // 생성될 행성 가상 조준점
-                ctx.beginPath();
-                ctx.arc(startX, startY, Math.max(2.5, Math.pow(parseFloat(massInput.value), 1/3) * 1.5), 0, Math.PI * 2);
-                ctx.fillStyle = colorInput.value;
-                ctx.fill();
-            }
-
-            requestAnimationFrame(animate);
+  let pollTimer = null;
+  function startPolling(){
+    stopPolling();
+    pollTimer = setInterval(()=>{
+      if(!S.roomCode) return;
+      const fresh = loadRoom(S.roomCode);
+      if(!fresh) return;
+      if(JSON.stringify(fresh) !== JSON.stringify(S.room)){
+        S.room = fresh;
+        if(S.screen === 'student-waiting' && fresh.status === 'done'){
+          go('student-result');
+        } else {
+          render();
         }
+      }
+    }, 900);
+  }
+  function stopPolling(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
 
-        animate();
-    </script>
+  function go(screen, extra){
+    S.screen = screen;
+    if(extra) Object.assign(S, extra);
+    render();
+  }
+  function showToast(msg){
+    S.toast = msg;
+    render();
+    setTimeout(()=>{ S.toast=null; render(); }, 2200);
+  }
+
+  /* ------------------------------ Small components ------------------------------ */
+  function icon(name, cls){ return `<i data-lucide="${name}" class="${cls||''}"></i>`; }
+
+  function stepper(current, total){
+    let dots = '';
+    for(let i=1;i<=total;i++){
+      dots += `<span class="stepper-dot ${i===current?'active':(i<current?'done':'')}"></span>`;
+    }
+    return `<div class="flex items-center gap-2 justify-center mb-2">${dots}</div>`;
+  }
+
+  function topBar(subtitle, backAction){
+    return `
+    <div class="w-full max-w-5xl mx-auto flex items-center justify-between px-6 pt-6 pb-2">
+      <div class="flex items-center gap-2 cursor-pointer" data-action="go-landing">
+        ${icon('wind','w-5 h-5 text-[var(--primary)]')}
+        <span class="brand-mark text-lg">ThermoSeat</span>
+        ${subtitle ? `<span class="text-sm text-[var(--ink-muted)] ml-2 hidden sm:inline">· ${subtitle}</span>` : ''}
+      </div>
+      ${backAction ? `<button class="btn btn-ghost !px-3 !py-2" data-action="${backAction}">${icon('arrow-left','w-4 h-4')} 뒤로</button>` : `<span></span>`}
+    </div>`;
+  }
+
+  function legend(){
+    return `
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[var(--ink-muted)]">
+      ${[5,4,3,2,1].map(l=>`<span class="flex items-center gap-1.5"><span class="legend-dot" style="background:${LEVEL_COLORS[l]}"></span>Lv.${l} ${LEVEL_LABELS[l]}</span>`).join('')}
+    </div>`;
+  }
+
+  /* ------------------------------ Screen: Landing ------------------------------ */
+  function screenLanding(){
+    return `
+    <div class="flex-1 flex flex-col items-center justify-center px-6 py-10 fade-in">
+      <div class="text-center max-w-xl mb-10">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--primary-light)] text-[var(--primary-dark)] text-xs font-semibold mb-5">
+          ${icon('snowflake','w-3.5 h-3.5')} 교실 기류 × 체감 온도 매칭
+        </div>
+        <h1 class="text-4xl sm:text-5xl brand-mark leading-tight mb-3">써모시트, <span style="color:var(--primary)">내 몸에 맞는 자리</span>를 찾다</h1>
+        <p class="text-[var(--ink-muted)] text-base leading-relaxed">에어컨 바람이 도달하는 방식과 나의 체감 온도를 함께 계산해서<br class="hidden sm:block">교실에서 가장 쾌적한 자리를 알려드려요.</p>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-5 w-full max-w-3xl">
+        <button data-action="go-personal-start" class="card p-7 text-left hover:shadow-lg transition-shadow group">
+          <div class="w-12 h-12 rounded-2xl bg-[var(--primary-light)] flex items-center justify-center mb-4">${icon('user','w-6 h-6 text-[var(--primary-dark)]')}</div>
+          <h3 class="text-lg font-bold mb-1.5">개인용 모드</h3>
+          <p class="text-sm text-[var(--ink-muted)] leading-relaxed mb-4">나만의 명당을 찾아요. 내 상태를 입력하면 교실 좌석별 체감 적정도를 히트맵으로 보여드려요.</p>
+          <span class="text-sm font-semibold text-[var(--primary)] flex items-center gap-1">시작하기 ${icon('arrow-right','w-4 h-4')}</span>
+        </button>
+        <button data-action="go-group-landing" class="card p-7 text-left hover:shadow-lg transition-shadow group">
+          <div class="w-12 h-12 rounded-2xl bg-[var(--primary-light)] flex items-center justify-center mb-4">${icon('users','w-6 h-6 text-[var(--primary-dark)]')}</div>
+          <h3 class="text-lg font-bold mb-1.5">단체용 모드</h3>
+          <p class="text-sm text-[var(--ink-muted)] leading-relaxed mb-4">학급 전체 최적 배치예요. 선생님이 방을 만들면 학생들이 참여해 자리를 자동 배정받아요.</p>
+          <span class="text-sm font-semibold text-[var(--primary)] flex items-center gap-1">시작하기 ${icon('arrow-right','w-4 h-4')}</span>
+        </button>
+      </div>
+    </div>`;
+  }
+
+  /* ------------------------------ Survey (공용: 개인/학생) ------------------------------ */
+  function surveyStep(ctx, draft, step){
+    let body = '';
+    if(step===1){
+      body = `
+      ${ctx==='student' ? `
+      <div class="mb-6">
+        <label class="text-xs font-semibold text-[var(--ink-muted)]">이름</label>
+        <input type="text" id="studentNameInput" value="${draft.name||''}" placeholder="이름을 입력하세요" class="w-full border rounded-xl px-4 py-2.5 mt-1 text-sm font-medium" style="border-color:var(--border)">
+      </div>` : ''}
+      <h2 class="text-xl font-bold mb-1">체감 선호 온도</h2>
+      <p class="text-sm text-[var(--ink-muted)] mb-8">평소 더위와 추위, 어느 쪽을 더 많이 타나요?</p>
+      <div class="px-2">
+        <div class="text-center mb-5">
+          <span id="sliderValue" class="text-3xl font-extrabold" style="color:var(--primary)">${draft.prefTemp > 0 ? '+' : ''}${draft.prefTemp}</span>
+        </div>
+        <input type="range" min="-3" max="3" step="1" value="${draft.prefTemp}" data-bind="prefTemp" />
+        <div class="flex justify-between text-xs text-[var(--ink-muted)] mt-2">
+          <span>더위 심하게 탐 (-3)</span><span>보통 (0)</span><span>추위 심하게 탐 (+3)</span>
+        </div>
+      </div>`;
+    } else if(step===2){
+      const baseOptions = [ {v:0,label:'체육복 / 반팔'}, {v:1,label:'교복 / 생활복'} ];
+      const extraOptions = [ {v:1,label:'체육복 외투'}, {v:2,label:'후드집업 / 담요'}, {v:3,label:'패딩 / 두꺼운 자켓'} ];
+      body = `
+      <h2 class="text-xl font-bold mb-1">평소 착장</h2>
+      <p class="text-sm text-[var(--ink-muted)] mb-5">기본 착장 1개를 고르고, 껴입은 외투는 개수 제한 없이 추가하세요.</p>
+      <div class="mb-3 text-xs font-semibold text-[var(--ink-muted)]">기본 착장 (택 1)</div>
+      <div class="grid grid-cols-2 gap-3 mb-6">
+        ${baseOptions.map(o=>`
+          <div class="chip radio-style ${draft.baseOutfit===o.v?'selected':''}" data-action="set-base-outfit" data-value="${o.v}">
+            <span class="box">${draft.baseOutfit===o.v? icon('check','w-3 h-3 text-white'):''}</span>
+            <span class="text-sm font-medium">${o.label}</span>
+          </div>`).join('')}
+      </div>
+      <div class="mb-3 text-xs font-semibold text-[var(--ink-muted)]">추가 외투 (같은 종류도 여러 개 추가 가능)</div>
+      <div class="grid grid-cols-1 gap-3">
+        ${extraOptions.map(o=>{
+          const cnt = draft.extraOutfits.filter(x=>x===o.v).length;
+          return `
+          <div class="chip ${cnt>0?'selected':''}" style="cursor:default">
+            <span class="text-sm font-medium">${o.label}</span>
+            <span class="text-xs text-[var(--ink-muted)]">개당 −${o.v}</span>
+            <div class="ml-auto flex items-center gap-2">
+              <button type="button" class="counter-btn" data-action="remove-extra-outfit" data-value="${o.v}" ${cnt===0?'disabled':''} aria-label="${o.label} 하나 빼기">−</button>
+              <span class="w-6 text-center text-sm font-bold">${cnt}</span>
+              <button type="button" class="counter-btn" data-action="add-extra-outfit" data-value="${o.v}" aria-label="${o.label} 하나 추가">+</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    } else if(step===3){
+      body = `
+      <h2 class="text-xl font-bold mb-1">신체 활동량 및 땀 배출</h2>
+      <p class="text-sm text-[var(--ink-muted)] mb-8">체육 활동 직후이거나 땀이 많이 나는 편인가요?</p>
+      <div class="px-2">
+        <div class="text-center mb-5">
+          <span id="sliderValue" class="text-3xl font-extrabold" style="color:var(--primary)">${draft.activity}</span>
+        </div>
+        <input type="range" min="-3" max="0" step="1" value="${draft.activity}" data-bind="activity" />
+        <div class="flex justify-between text-xs text-[var(--ink-muted)] mt-2">
+          <span>땀 매우 많이 남 (-3)</span><span>보통 (-1)</span><span>땀 안 남 (0)</span>
+        </div>
+      </div>`;
+    }
+    const isLast = step===3;
+    return `
+    <div class="flex-1 flex flex-col items-center px-6 py-8 fade-in">
+      <div class="w-full max-w-md">
+        ${stepper(step,3)}
+        <div class="card p-7 mt-4">
+          ${body}
+        </div>
+        <div class="flex gap-3 mt-6">
+          ${step>1 ? `<button class="btn btn-soft flex-1" data-action="survey-prev">이전</button>` : `<button class="btn btn-soft flex-1" data-action="survey-cancel">취소</button>`}
+          <button class="btn btn-primary flex-1" data-action="${isLast ? 'survey-submit':'survey-next'}">
+            ${isLast ? '제출하기' : '다음'} ${icon('arrow-right','w-4 h-4')}
+          </button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* ------------------------------ Classroom grid renderer (공용) ------------------------------ */
+  function renderGridStage(grid, opts){
+    opts = opts || {};
+    const ac = acCenterPct(grid);
+    const desks = grid.seats.map(seat=>{
+      const p = seatCenterPct(grid, seat);
+      const color = LEVEL_COLORS[seat.level];
+      const occupant = opts.students && seat.occupantId ? opts.students[seat.occupantId] : null;
+      const isBest = opts.bestSeatIds && opts.bestSeatIds.includes(seat.id);
+      let inner = `<span>${seat.level}</span>`;
+      if(occupant){
+        inner = `<span class="name">${occupant.name}</span>`;
+      }
+      return `<div class="desk ${isBest?'best':''}" style="left:${p.x}%; top:${p.y}%; background:${color};" data-action="${opts.editable?'cycle-seat':''}" data-seat="${seat.id}" title="Lv.${seat.level} · ${LEVEL_LABELS[seat.level]}">${inner}</div>`;
+    }).join('');
+    const acHtml = `<div class="ac-marker" style="left:${ac.x}%; top:${ac.y}%;">❄️</div>`;
+    const bg = grid.image ? `style="background-image:url('${grid.image}')"` : '';
+    return `
+    <div class="classroom-stage" id="stage" ${bg} data-clickable="${opts.clickToPlaceAc?'1':'0'}">
+      <div class="teacher-desk">교탁</div>
+      ${acHtml}
+      ${desks}
+    </div>`;
+  }
+
+  /* ------------------------------ Screen: Personal classroom setup ------------------------------ */
+  function screenPersonalClassroom(){
+    const grid = S.personal.grid;
+    return `
+    ${topBar('개인용 모드','survey-cancel')}
+    <div class="flex-1 px-6 pb-10 fade-in">
+      <div class="max-w-3xl mx-auto">
+        <h2 class="text-xl font-bold mb-1">교실 구조 확인</h2>
+        <p class="text-sm text-[var(--ink-muted)] mb-5">에어컨 위치를 클릭해서 표시하고, 필요하면 좌석을 직접 클릭해 냉기 단계를 조정하세요.</p>
+
+        <div class="card p-4 mb-4">
+          <div class="flex flex-wrap items-center gap-3 mb-4 text-sm">
+            <label class="flex items-center gap-2">행(줄) 수
+              <input type="number" min="3" max="8" value="${grid.rows}" data-bind-num="rows" class="w-16 border rounded-lg px-2 py-1" style="border-color:var(--border)">
+            </label>
+            <label class="flex items-center gap-2">분단 수
+              <input type="number" min="2" max="4" value="${grid.groups}" data-bind-num="groups" class="w-16 border rounded-lg px-2 py-1" style="border-color:var(--border)">
+            </label>
+            <label class="btn btn-soft !py-2 !px-3 cursor-pointer text-xs">
+              ${icon('image','w-4 h-4')} 교실 사진 업로드
+              <input type="file" accept="image/*" id="imgUpload" class="hidden">
+            </label>
+            <span class="text-xs text-[var(--ink-muted)]">에어컨 아이콘을 원하는 위치로 드래그하거나, 스테이지를 클릭하세요.</span>
+          </div>
+          ${renderGridStage(grid, { editable:true, clickToPlaceAc:true })}
+          <div class="mt-4">${legend()}</div>
+        </div>
+
+        <div class="flex gap-3">
+          <button class="btn btn-soft flex-1" data-action="auto-detect-ac">${icon('wand-2','w-4 h-4')} 자동 기류 계산</button>
+          <button class="btn btn-primary flex-1" data-action="personal-compute">결과 보기 ${icon('arrow-right','w-4 h-4')}</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* ------------------------------ Screen: Personal result ------------------------------ */
+  function screenPersonalResult(){
+    const grid = S.personal.grid;
+    const target = S.personal.targetLevel;
+    let best = 99, bestIds = [];
+    grid.seats.forEach(s=>{
+      const diff = Math.abs(s.level - target);
+      if(diff < best){ best = diff; bestIds = [s.id]; }
+      else if(diff === best){ bestIds.push(s.id); }
+    });
+    const bestSeat = grid.seats.find(s=>s.id===bestIds[0]);
+    const tip = tipForDiff(bestSeat.level - target);
+    return `
+    ${topBar('개인용 모드','go-landing')}
+    <div class="flex-1 px-6 pb-10 fade-in">
+      <div class="max-w-3xl mx-auto">
+        <div class="card p-6 mb-5 flex items-center gap-5">
+          <div class="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-extrabold text-white flex-shrink-0" style="background:${LEVEL_COLORS[target]}">Lv.${target}</div>
+          <div>
+            <div class="text-xs text-[var(--ink-muted)] font-semibold mb-1">나의 요구 냉기 지수</div>
+            <div class="text-lg font-bold">${LEVEL_LABELS[target]}이(가) 필요해요</div>
+          </div>
+        </div>
+        <div class="card p-4 mb-5">
+          <h3 class="text-base font-bold mb-3 px-1">나만의 체감 적정도 히트맵</h3>
+          ${renderGridStage(grid, { bestSeatIds: bestIds })}
+          <div class="mt-4">${legend()}</div>
+        </div>
+        <div class="card p-5 flex items-center gap-4">
+          <span class="text-3xl">${tip.icon}</span>
+          <div>
+            <div class="font-bold">${tip.title}</div>
+            <div class="text-sm text-[var(--ink-muted)]">테두리로 표시된 자리가 당신에게 가장 잘 맞는 명당이에요. ${tip.text}</div>
+          </div>
+        </div>
+        <div class="flex gap-3 mt-6">
+          <button class="btn btn-soft flex-1" data-action="go-personal-classroom">${icon('sliders-horizontal','w-4 h-4')} 기류 다시 조정</button>
+          <button class="btn btn-ghost flex-1" data-action="go-landing">처음으로</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* ------------------------------ Screen: Group landing ------------------------------ */
+  function screenGroupLanding(){
+    return `
+    ${topBar('단체용 모드','go-landing')}
+    <div class="flex-1 flex items-center justify-center px-6 pb-10 fade-in">
+      <div class="grid sm:grid-cols-2 gap-5 w-full max-w-2xl">
+        <button data-action="go-teacher-setup" class="card p-7 text-left hover:shadow-lg transition-shadow">
+          <div class="w-12 h-12 rounded-2xl bg-[var(--primary-light)] flex items-center justify-center mb-4">${icon('presentation','w-6 h-6 text-[var(--primary-dark)]')}</div>
+          <h3 class="text-lg font-bold mb-1.5">선생님이에요</h3>
+          <p class="text-sm text-[var(--ink-muted)] leading-relaxed">학급 방을 새로 만들고 자리 배치를 진행해요.</p>
+        </button>
+        <button data-action="go-student-join" class="card p-7 text-left hover:shadow-lg transition-shadow">
+          <div class="w-12 h-12 rounded-2xl bg-[var(--primary-light)] flex items-center justify-center mb-4">${icon('smartphone','w-6 h-6 text-[var(--primary-dark)]')}</div>
+          <h3 class="text-lg font-bold mb-1.5">학생이에요</h3>
+          <p class="text-sm text-[var(--ink-muted)] leading-relaxed">방 코드를 입력하고 설문에 참여해요.</p>
+        </button>
+      </div>
+    </div>`;
+  }
+
+  /* ------------------------------ Screen: Teacher setup ------------------------------ */
+  function screenTeacherSetup(){
+    return `
+    ${topBar('선생님','go-group-landing')}
+    <div class="flex-1 flex items-center justify-center px-6 pb-10 fade-in">
+      <div class="card p-8 w-full max-w-sm">
+        <h2 class="text-xl font-bold mb-1">학급 방 만들기</h2>
+        <p class="text-sm text-[var(--ink-muted)] mb-6">학생 수를 설정하면 참여 코드가 생성돼요.</p>
+        <label class="text-xs font-semibold text-[var(--ink-muted)]">학생 수</label>
+        <input type="number" min="1" max="60" value="${S.createCount}" id="createCountInput" class="w-full border rounded-xl px-4 py-3 mt-1 mb-6 text-lg font-bold" style="border-color:var(--border)">
+        <button class="btn btn-primary w-full" data-action="create-room">${icon('door-open','w-4 h-4')} 방 생성하기</button>
+      </div>
+    </div>`;
+  }
+
+  /* ------------------------------ Screen: Teacher waiting ------------------------------ */
+  function screenTeacherWaiting(){
+    const room = S.room;
+    const students = Object.values(room.students);
+    const submittedCount = students.filter(s=>s.submitted).length;
+    const pct = room.totalStudents ? Math.round(submittedCount/room.totalStudents*100) : 0;
+    const allDone = submittedCount >= room.totalStudents && room.totalStudents>0;
+    return `
+    ${topBar('선생님 · 대기실')}
+    <div class="flex-1 px-6 pb-10 fade-in">
+      <div class="max-w-3xl mx-auto grid sm:grid-cols-5 gap-5">
+        <div class="card p-6 sm:col-span-2 flex flex-col items-center text-center">
+          <div class="text-xs font-semibold text-[var(--ink-muted)] mb-2">참여 코드</div>
+          <div class="code-display text-4xl font-extrabold mb-4" style="color:var(--primary)">${room.code}</div>
+          <canvas id="qrcanvas" class="mb-3"></canvas>
+          <p class="text-xs text-[var(--ink-muted)]">학생들이 코드를 입력하거나 QR을 스캔해 참여해요.</p>
+        </div>
+        <div class="card p-6 sm:col-span-3">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-bold">제출 현황</h3>
+            <span class="text-sm font-semibold" style="color:var(--primary)">${submittedCount} / ${room.totalStudents}명</span>
+          </div>
+          <div class="progress-track mb-5"><div class="progress-fill" style="width:${pct}%"></div></div>
+          <div class="max-h-40 overflow-y-auto scrollbar-thin mb-5">
+            ${students.length===0 ? `<p class="text-sm text-[var(--ink-muted)]">아직 참여한 학생이 없어요.</p>` : students.map(s=>`
+              <div class="flex items-center justify-between py-2 border-b" style="border-color:var(--border)">
+                <span class="text-sm font-medium">${s.name || '(이름 미입력)'}</span>
+                <span class="text-xs ${s.submitted?'text-[var(--primary)]':'text-[var(--ink-muted)]'} font-semibold">${s.submitted?'제출 완료':'입력 중'}</span>
+              </div>`).join('')}
+          </div>
+          <div class="flex flex-col gap-2">
+            <button class="btn btn-soft w-full" data-action="go-teacher-classroom">${icon('layout-grid','w-4 h-4')} 교실 기류 설정 ${room.grid.configured?'(수정)':''}</button>
+            <button class="btn btn-primary w-full" data-action="run-analysis" ${allDone && room.grid.configured ? '' : 'disabled'}>${icon('sparkles','w-4 h-4')} 분석 및 자리 배치 실행</button>
+            ${!room.grid.configured ? `<span class="text-xs text-center" style="color:var(--danger)">교실 기류 설정을 먼저 완료해주세요.</span>` : (!allDone ? `<span class="text-xs text-center text-[var(--ink-muted)]">모든 학생 제출을 기다리는 중이에요.</span>`:'')}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* ------------------------------ Screen: Teacher classroom config ------------------------------ */
+  function screenTeacherClassroom(){
+    const grid = S.room.grid;
+    return `
+    ${topBar('선생님 · 교실 설정','go-teacher-waiting-back')}
+    <div class="flex-1 px-6 pb-10 fade-in">
+      <div class="max-w-3xl mx-auto">
+        <h2 class="text-xl font-bold mb-1">교실 구조 및 기류 설정</h2>
+        <p class="text-sm text-[var(--ink-muted)] mb-5">에어컨 위치를 클릭하면 자동으로 냉기 단계가 계산돼요. 틀린 부분은 좌석을 클릭해 직접 수정하세요.</p>
+        <div class="card p-4 mb-4">
+          <div class="flex flex-wrap items-center gap-3 mb-4 text-sm">
+            <label class="flex items-center gap-2">행(줄) 수
+              <input type="number" min="3" max="8" value="${grid.rows}" data-bind-num="rows" class="w-16 border rounded-lg px-2 py-1" style="border-color:var(--border)">
+            </label>
+            <label class="flex items-center gap-2">분단 수
+              <input type="number" min="2" max="4" value="${grid.groups}" data-bind-num="groups" class="w-16 border rounded-lg px-2 py-1" style="border-color:var(--border)">
+            </label>
+            <label class="btn btn-soft !py-2 !px-3 cursor-pointer text-xs">
+              ${icon('image','w-4 h-4')} 교실 사진 업로드
+              <input type="file" accept="image/*" id="imgUpload" class="hidden">
+            </label>
+          </div>
+          ${renderGridStage(grid, { editable:true, clickToPlaceAc:true })}
+          <div class="mt-4">${legend()}</div>
+        </div>
+        <button class="btn btn-primary w-full" data-action="confirm-teacher-grid">${icon('check','w-4 h-4')} 바람 분포 수정 완료</button>
+      </div>
+    </div>`;
+  }
+
+  /* ------------------------------ Screen: Teacher result ------------------------------ */
+  function screenTeacherResult(){
+    const room = S.room;
+    const grid = room.grid;
+    return `
+    ${topBar('선생님 · 결과','go-landing')}
+    <div class="flex-1 px-6 pb-10 fade-in">
+      <div class="max-w-3xl mx-auto">
+        <h2 class="text-xl font-bold mb-1">최종 좌석 배치</h2>
+        <p class="text-sm text-[var(--ink-muted)] mb-5">전체 학생의 요구-좌석 냉기 차이 합이 최소가 되도록 배치했어요.</p>
+        <div class="card p-4 mb-5">
+          ${renderGridStage(grid, { students: room.students })}
+          <div class="mt-4">${legend()}</div>
+        </div>
+        <div class="card p-4">
+          <h3 class="font-bold mb-3 px-1">학생별 쾌적도</h3>
+          <div class="max-h-64 overflow-y-auto scrollbar-thin">
+            ${Object.values(room.students).filter(s=>s.submitted).map(s=>{
+              const seat = grid.seats.find(x=>x.id===s.assignedSeatId);
+              const diff = seat ? seat.level - s.targetLevel : null;
+              const tip = seat ? tipForDiff(diff) : {icon:'⚠️', title:'배정 실패', text:'좌석이 부족해요.'};
+              return `<div class="flex items-center justify-between py-2.5 border-b" style="border-color:var(--border)">
+                <div class="flex items-center gap-3">
+                  <span class="text-lg">${tip.icon}</span>
+                  <div>
+                    <div class="text-sm font-semibold">${s.name}</div>
+                    <div class="text-xs text-[var(--ink-muted)]">요구 Lv.${s.targetLevel} ${seat?`→ 좌석 Lv.${seat.level}`:''}</div>
+                  </div>
+                </div>
+                <span class="text-xs font-semibold" style="color:var(--primary-dark)">${tip.title}</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* ------------------------------ Screen: Student join ------------------------------ */
+  function screenStudentJoin(){
+    return `
+    ${topBar('학생','go-group-landing')}
+    <div class="flex-1 flex items-center justify-center px-6 pb-10 fade-in">
+      <div class="card p-8 w-full max-w-sm">
+        <h2 class="text-xl font-bold mb-1">방 참여하기</h2>
+        <p class="text-sm text-[var(--ink-muted)] mb-6">선생님께 받은 6자리 코드를 입력하세요.</p>
+        <input type="text" inputmode="numeric" maxlength="6" placeholder="000000" value="${S.roomCode}" id="joinCodeInput" class="w-full border rounded-xl px-4 py-3 mb-2 text-2xl font-bold text-center code-display" style="border-color:var(--border)">
+        ${S.joinError ? `<p class="text-xs mb-3" style="color:var(--danger)">${S.joinError}</p>` : `<div class="mb-3"></div>`}
+        <button class="btn btn-primary w-full" data-action="join-room">${icon('log-in','w-4 h-4')} 참여하기</button>
+      </div>
+    </div>`;
+  }
+
+  /* ------------------------------ Screen: Student waiting ------------------------------ */
+  function screenStudentWaiting(){
+    return `
+    ${topBar('학생 · 대기중')}
+    <div class="flex-1 flex flex-col items-center justify-center px-6 pb-10 fade-in text-center">
+      <div class="w-20 h-20 rounded-full bg-[var(--primary-light)] flex items-center justify-center mb-6 pop">
+        ${icon('hourglass','w-9 h-9 text-[var(--primary-dark)]')}
+      </div>
+      <h2 class="text-xl font-bold mb-2">제출 완료!</h2>
+      <p class="text-sm text-[var(--ink-muted)]">선생님이 전체 분석을 완료하면<br>자동으로 자리 결과가 표시돼요.</p>
+    </div>`;
+  }
+
+  /* ------------------------------ Screen: Student result ------------------------------ */
+  function screenStudentResult(){
+    const room = S.room;
+    const me = room.students[S.studentId];
+    const seat = room.grid.seats.find(s=>s.id===me.assignedSeatId);
+    if(!seat){
+      return `
+      ${topBar('학생 · 결과')}
+      <div class="flex-1 flex flex-col items-center justify-center px-6 pb-10 fade-in text-center">
+        <span class="text-4xl mb-4">⚠️</span>
+        <h2 class="text-xl font-bold mb-2">좌석 배정에 실패했어요</h2>
+        <p class="text-sm text-[var(--ink-muted)]">좌석 수보다 학생 수가 많아요. 선생님께 문의하세요.</p>
+      </div>`;
+    }
+    const diff = seat.level - me.targetLevel;
+    const tip = tipForDiff(diff);
+    const seatNumber = room.grid.seats.findIndex(s=>s.id===seat.id) + 1;
+    return `
+    ${topBar('학생 · 결과')}
+    <div class="flex-1 px-6 pb-10 fade-in">
+      <div class="max-w-md mx-auto text-center">
+        <div class="w-20 h-20 rounded-3xl mx-auto flex items-center justify-center text-3xl font-extrabold text-white mb-5" style="background:${LEVEL_COLORS[seat.level]}">${seatNumber}</div>
+        <h2 class="text-xl font-bold mb-1">${me.name}님의 자리는 ${seatNumber}번</h2>
+        <p class="text-sm text-[var(--ink-muted)] mb-6">좌석 냉기 Lv.${seat.level} · 나의 요구 Lv.${me.targetLevel}</p>
+        <div class="card p-4 mb-5">
+          ${renderGridStage(room.grid, { bestSeatIds:[seat.id] })}
+        </div>
+        <div class="card p-5 flex items-center gap-4 text-left">
+          <span class="text-3xl">${tip.icon}</span>
+          <div>
+            <div class="font-bold">${tip.title}</div>
+            <div class="text-sm text-[var(--ink-muted)]">${tip.text}</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* ------------------------------ Master render ------------------------------ */
+  function render(){
+    const app = document.getElementById('app');
+    let html = '';
+    switch(S.screen){
+      case 'landing': html = screenLanding(); break;
+      case 'personal-survey': html = surveyStep('personal', S.personal.draft, S.step); break;
+      case 'personal-classroom': html = screenPersonalClassroom(); break;
+      case 'personal-result': html = screenPersonalResult(); break;
+      case 'group-landing': html = screenGroupLanding(); break;
+      case 'teacher-setup': html = screenTeacherSetup(); break;
+      case 'teacher-waiting': html = screenTeacherWaiting(); break;
+      case 'teacher-classroom': html = screenTeacherClassroom(); break;
+      case 'teacher-result': html = screenTeacherResult(); break;
+      case 'student-join': html = screenStudentJoin(); break;
+      case 'student-survey': html = surveyStep('student', S.studentDraft, S.step); break;
+      case 'student-waiting': html = screenStudentWaiting(); break;
+      case 'student-result': html = screenStudentResult(); break;
+      default: html = screenLanding();
+    }
+    const toastHtml = S.toast ? `<div class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[var(--ink)] text-white text-sm font-medium px-5 py-3 rounded-full shadow-lg pop z-50">${S.toast}</div>` : '';
+    app.innerHTML = `<div class="flex-1 flex flex-col">${html}</div>${toastHtml}`;
+    if(window.lucide) lucide.createIcons();
+    attachDynamicHandlers();
+  }
+
+  /* ------------------------------ Dynamic (post-render) handlers ------------------------------ */
+  function attachDynamicHandlers(){
+    const stage = document.getElementById('stage');
+    if(stage){
+      const isPersonal = S.screen === 'personal-classroom';
+      const grid = isPersonal ? S.personal.grid : (S.room ? S.room.grid : null);
+      if(grid){
+        stage.addEventListener('click', (e)=>{
+          if(e.target.closest('.desk')) return; // seat clicks handled by delegation below
+          const rect = stage.getBoundingClientRect();
+          const xPct = ((e.clientX - rect.left) / rect.width) * 100;
+          const yPct = ((e.clientY - rect.top) / rect.height) * 100;
+          const xPad=9, yPad=14, groupGapExtra=3.2;
+          const maxCol = grid.groups*2-1;
+          const usableW = 100 - 2*xPad - groupGapExtra*(grid.groups-1);
+          let col = ((xPct - xPad) / usableW) * (maxCol+1);
+          col = clamp(col, 0, maxCol);
+          const row = clamp(((yPct - yPad) / (100-2*yPad)) * grid.rows, 0, grid.rows-1);
+          grid.acRow = row; grid.acCol = col;
+          autoAssignLevels(grid);
+          if(!isPersonal){ S.room.grid.configured = false; saveRoom(S.room); }
+          render();
+        });
+      }
+    }
+    const imgUpload = document.getElementById('imgUpload');
+    if(imgUpload){
+      imgUpload.addEventListener('change', (e)=>{
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev)=>{
+          const grid = S.screen==='personal-classroom' ? S.personal.grid : S.room.grid;
+          grid.image = ev.target.result;
+          if(S.screen!=='personal-classroom') saveRoom(S.room);
+          render();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    const qrcanvas = document.getElementById('qrcanvas');
+    if(qrcanvas && S.room && window.QRCode){
+      const url = `${location.origin}${location.pathname}?join=${S.room.code}`;
+      QRCode.toCanvas(qrcanvas, url, { width:140, margin:1, color:{ dark:'#1F2A3C', light:'#FFFFFF' } }, ()=>{});
+    }
+    if(S.screen === 'teacher-waiting' || S.screen === 'student-waiting'){ startPolling(); } else { stopPolling(); }
+  }
+
+  /* ------------------------------ Event delegation ------------------------------ */
+  document.addEventListener('click', (e)=>{
+    const el = e.target.closest('[data-action]');
+    if(!el) return;
+    const action = el.getAttribute('data-action');
+    const value = el.getAttribute('data-value');
+    handleAction(action, value, el);
+  });
+  document.addEventListener('input', (e)=>{
+    const bind = e.target.getAttribute && e.target.getAttribute('data-bind');
+    if(bind){
+      // 드래그 중 전체 re-render를 하면 슬라이더 DOM이 교체되며 드래그가 끊기므로,
+      // 값 표시만 직접 갱신하고 전체 render()는 호출하지 않습니다.
+      const draft = S.screen==='personal-survey' ? S.personal.draft : S.studentDraft;
+      draft[bind] = Number(e.target.value);
+      const valEl = document.getElementById('sliderValue');
+      if(valEl) valEl.textContent = (draft[bind] > 0 ? '+' : '') + draft[bind];
+    }
+  });
+  document.addEventListener('change', (e)=>{
+    const bindNum = e.target.getAttribute && e.target.getAttribute('data-bind-num');
+    if(bindNum){
+      const grid = S.screen==='personal-classroom' ? S.personal.grid : S.room.grid;
+      let v = parseInt(e.target.value,10);
+      if(bindNum==='rows') v = clamp(v,3,8);
+      if(bindNum==='groups') v = clamp(v,2,4);
+      grid[bindNum] = v;
+      grid.seats = buildSeats(grid.rows, grid.groups);
+      grid.acCol = clamp(grid.acCol, 0, grid.groups*2-1);
+      autoAssignLevels(grid);
+      if(S.screen!=='personal-classroom'){ S.room.grid.configured=false; saveRoom(S.room); }
+      render();
+    }
+  });
+
+  function handleAction(action, value, el){
+    switch(action){
+      case 'go-landing': stopPolling(); go('landing', { room:null, roomCode:'', studentId:null, joinError:'' }); break;
+
+      /* 개인용 모드 */
+      case 'go-personal-start': go('personal-survey', { step:1, personal:{ draft:freshDraft(), targetLevel:null, grid:defaultGrid() } }); break;
+      case 'survey-cancel':
+        if(S.room){ // 학생 흐름 취소
+          go('group-landing');
+        } else {
+          go('landing');
+        }
+        break;
+      case 'survey-prev': S.step = clamp(S.step-1,1,3); render(); break;
+      case 'survey-next':
+        if(S.step===1 && S.room && !S.studentDraft.name.trim()){ showToast('이름을 입력해주세요.'); break; }
+        S.step = clamp(S.step+1,1,3); render(); break;
+      case 'set-base-outfit': {
+        const draft = S.screen==='personal-survey' ? S.personal.draft : S.studentDraft;
+        draft.baseOutfit = Number(value); render(); break;
+      }
+      /* 추가 외투: 같은 점수/같은 종류도 개수 제한 없이 여러 개 추가 가능 */
+      case 'add-extra-outfit': {
+        const draft = S.screen==='personal-survey' ? S.personal.draft : S.studentDraft;
+        draft.extraOutfits.push(Number(value));
+        render(); break;
+      }
+      case 'remove-extra-outfit': {
+        const draft = S.screen==='personal-survey' ? S.personal.draft : S.studentDraft;
+        const idx = draft.extraOutfits.indexOf(Number(value));
+        if(idx>=0) draft.extraOutfits.splice(idx,1);
+        render(); break;
+      }
+      case 'survey-submit': {
+        if(S.room){ submitStudentSurvey(); }
+        else {
+          const raw = calcRawScore(S.personal.draft);
+          S.personal.targetLevel = rawToLevel(raw);
+          go('personal-classroom');
+        }
+        break;
+      }
+      case 'go-personal-classroom': go('personal-classroom'); break;
+      case 'auto-detect-ac': autoAssignLevels(S.personal.grid); showToast('기류를 자동으로 다시 계산했어요.'); break;
+      case 'personal-compute': go('personal-result'); break;
+      case 'cycle-seat': {
+        const grid = S.screen==='personal-classroom' ? S.personal.grid : (S.screen==='teacher-classroom' ? S.room.grid : null);
+        if(!grid) break;
+        const seat = grid.seats.find(s=>s.id===el.getAttribute('data-seat'));
+        seat.level = seat.level>=5 ? 1 : seat.level+1;
+        if(S.screen==='teacher-classroom'){ S.room.grid.configured=false; saveRoom(S.room); }
+        render();
+        break;
+      }
+
+      /* 단체용 모드 */
+      case 'go-group-landing': go('group-landing'); break;
+      case 'go-teacher-setup': go('teacher-setup'); break;
+      case 'create-room': {
+        const count = clamp(parseInt(document.getElementById('createCountInput').value,10) || 24, 1, 60);
+        const code = genRoomCode();
+        const room = { code, totalStudents:count, grid: defaultGrid(), students:{}, status:'waiting', createdAt:Date.now() };
+        saveRoom(room);
+        S.room = room; S.roomCode = code;
+        go('teacher-waiting');
+        break;
+      }
+      case 'go-teacher-classroom': go('teacher-classroom'); break;
+      case 'go-teacher-waiting-back': {
+        const fresh = loadRoom(S.roomCode); if(fresh) S.room = fresh;
+        go('teacher-waiting');
+        break;
+      }
+      case 'confirm-teacher-grid':
+        S.room.grid.configured = true;
+        saveRoom(S.room);
+        showToast('교실 기류 설정이 저장됐어요.');
+        go('teacher-waiting');
+        break;
+      case 'run-analysis': {
+        const fresh = loadRoom(S.roomCode);
+        if(fresh) S.room = fresh;
+        runAssignment(S.room);
+        saveRoom(S.room);
+        go('teacher-result');
+        break;
+      }
+
+      case 'go-student-join': go('student-join', { joinError:'' }); break;
+      case 'join-room': {
+        const code = document.getElementById('joinCodeInput').value.trim();
+        const room = loadRoom(code);
+        if(!room){ S.joinError = '존재하지 않는 코드예요. 다시 확인해주세요.'; render(); break; }
+        S.roomCode = code; S.room = room; S.joinError = '';
+        S.studentId = sessionStorage.getItem('thermoseat_sid_'+code) || uid();
+        sessionStorage.setItem('thermoseat_sid_'+code, S.studentId);
+        const me = room.students[S.studentId];
+        if(me && me.submitted){
+          if(room.status === 'done'){ go('student-result'); }
+          else { go('student-waiting'); }
+        } else {
+          S.studentDraft = freshDraft();
+          go('student-survey', { step:1 });
+        }
+        break;
+      }
+
+      default: break;
+    }
+  }
+
+  function submitStudentSurvey(){
+    const raw = calcRawScore(S.studentDraft);
+    const targetLevel = rawToLevel(raw);
+    const fresh = loadRoom(S.roomCode) || S.room;
+    fresh.students[S.studentId] = {
+      id: S.studentId,
+      name: S.studentDraft.name || `학생${Object.keys(fresh.students).length+1}`,
+      targetLevel, rawScore: raw, submitted:true, submittedAt: Date.now(), assignedSeatId:null,
+    };
+    saveRoom(fresh);
+    S.room = fresh;
+    go('student-waiting');
+  }
+
+  /* Name input binding for survey step 1 (shown as a small field on step 1 for student flow) */
+  document.addEventListener('input', (e)=>{
+    if(e.target.id === 'studentNameInput'){
+      S.studentDraft.name = e.target.value;
+    }
+  });
+
+  /* ------------------------------ Boot ------------------------------ */
+  (function boot(){
+    const params = new URLSearchParams(location.search);
+    const join = params.get('join');
+    if(join){
+      S.roomCode = join;
+      const room = loadRoom(join);
+      if(room){
+        S.room = room;
+        S.studentId = sessionStorage.getItem('thermoseat_sid_'+join) || uid();
+        sessionStorage.setItem('thermoseat_sid_'+join, S.studentId);
+        S.screen = 'student-join';
+      }
+    }
+    render();
+  })();
+</script>
 </body>
 </html>
